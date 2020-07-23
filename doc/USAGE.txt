@@ -13,21 +13,18 @@ Thumbnails/L001/C2.1
 Thumbnails/L001/C3.1
 ...
 
-Copy the Makefile into your mirror of the thumbnails directory and run
+Copy these 3 files into your mirror of the thumbnails directory:  Makefile. And run
 
-make configure
+1) ./identifyimagetype.sh
+2) make -j4 all (to run it in parallel onto 4 jobs)
 
-and then
-
-make all
 
 This step has to open and close a few hundred thousand files,
 so it can take a long time.  It should create colorized thumbnails
 of each tile in the same directories as the originals, no more.
 
 After waiting for make all to finish, then run
-
-tileimages.py
+3) ./tileimages.py
 
 If all goes well, you should get intermediate per-lane images in the 
 individual directories, and a directory called Thumbnails/wholeimages
