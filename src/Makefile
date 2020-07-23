@@ -16,7 +16,7 @@ ifeq ($(TYPE),HISEQ)
 else ifeq ($(TYPE),HISEQ2)
   CROP1DIM=90x450-0-0
   CROP2DIM=149x149+93+151
-else ifeq ($(TYPE),MISEQ1)
+else ifeq ($(TYPE),MISEQ)
   CROP1DIM=300x300-0-0
   CROP2DIM=99x99+309+101
 else ifeq ($(TYPE),MISEQ2)
@@ -47,8 +47,8 @@ CROP1 := $(subst _color.gif,_crop.gif,$(COLOR))
 # crop2 contains one of the closeup images
 CROP2 := $(subst _color.gif,_crop2.gif,$(COLOR))
 
-configure:
-	tileimages.py
+#configure:
+#	./identifyimagetype.sh
 
 composite: all
 	tileimages.py
