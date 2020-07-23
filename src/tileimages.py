@@ -2,8 +2,10 @@
 '''This script composites color thumbnails into larger images
  representing entire lanes and entire flowcells per image'''
 
+
 import os, sys, glob
 from subprocess import check_output, CalledProcessError
+
 
 def execute(execstring):
     print execstring
@@ -16,46 +18,15 @@ def execute(execstring):
         else:
             sys.exit("Freakout!")
 
-def detecttype(somedir):
-    firstfile = (glob.glob(somedir+"/L001/C1.1/s*[aA].jpg") + glob.glob(somedir+"/L001/C1.1/s*red.jpg"))[0]
-    imagesize = check_output(["identify", firstfile])
-    if imagesize.find("608x300 ") > 0:
-        TYPE = "MISEQ"
-    elif imagesize.find("496x450 ") > 0:
-        TYPE = "HISEQ"
-    elif imagesize.find("542x450 ") > 0:
-        TYPE = "HISEQ2"
-    elif imagesize.find("576x300 ") > 0:
-        TYPE = "GAII"
-    elif imagesize.find("700x300 ") > 0:
-        TYPE = "NEXTSEQ"
-    else:
-        sys.exit("Unrecognized thumbanil size "+ imagesize + firstfile)
 
-    if os.path.isfile(somedir + "/L001/C1.1/s_1_1112_A.jpg"):
-        TREE = "HISEQ2"
-    elif os.path.isfile(somedir + "/L001/C1.1/s_1_1101_A.jpg"):
-        TREE = "HISEQ"
-    elif os.path.isfile(somedir + "/L001/C1.1/s_1_99_a.jpg"):
-        TREE = "GAII"
-    elif os.path.isfile(somedir + "/L001/C1.1/s_1_1_a.jpg"):
-        TREE = "MISEQ1"
-    elif os.path.isfile(somedir + "/L001/C1.1/s_1_1114_a.jpg"):
-        TREE = "MISEQ2"
-    elif os.path.isfile(somedir + "/L001/C1.1/s_1_11101_red.jpg"):
-        TREE = "NEXTSEQ"
-    else:
-        sys.exit("Unrecognized tree structure" )
-    NUMCYCLES = 0
-    for i in range(1, 600):
-        if not os.path.isdir(somedir+"/L001/C"+repr(i)+".1"):
-             NUMCYCLES = i - 1
-             break
-   # We are writing these files to communicate with MAKE
-    open(somedir + "/thumbnailpolish.numcycles", "w").write(str(NUMCYCLES) + "\n")
-    open(somedir + "/thumbnailpolish.type", "w").write(TYPE + "\n")
-    open(somedir + "/thumbnailpolish.tree", "w").write(TREE + "\n")
-    print TYPE, TREE, NUMCYCLES
+def detecttype(somedir):
+   # We are reading these files, used to communicate with MAKE
+    try:
+        a = open("thumbnailpolish.type").read().strip()
+        return a
+    except IOError:
+        sys.exit("Can't find config file thumbnailimages.type")
+
 
 def howmanycycles(somedir):
     '''Checks for the existence of directories for cycles, returns int.'''
@@ -65,19 +36,30 @@ def howmanycycles(somedir):
     except IOError:
         sys.exit("Can't find config file thumbnailimages.numcycles.")
 
+
 def testhiseq(somedir):
     try:
         a = open("thumbnailpolish.tree").read().strip()
         return a
     except IOError:
-        sys.exit("Can't find config file thumbnailimages.type")
+        sys.exit("Can't find config file thumbnailimages.tree")
+
+
+def test_func(list_of_file, out_file, MODE):
+    if os.path.isfile(list_of_file[0]):
+        if MODE == "pieces":
+            execute("convert +append -border 1 " + " ".join(list_of_file) + " " + out_file)
+        elif MODE == "gather":
+            execute("convert -append " + " ".join(list_of_file) + " " + out_file)
+    else:
+        print "skipping creating", out_file, "can't find", list_of_file
 
 
 def main():
 
-    detecttype(".")
+    TYPE = detecttype(".")
 
-    TYPE = testhiseq("")
+    TREE = testhiseq("")
 
     if TYPE == "HISEQ":  # Hiseq with 8 x 6 tiles
         print "Using HISEQ recipe"
@@ -104,7 +86,7 @@ def main():
         lane = ["1"]
         iter1 = [""]
         iter2 = ["1", "2", "3", "4", "5", "6", "7", "8"]
-    elif TYPE == "MISEQ" and TREE == "MISEQ2": # MISEQ2 recipe
+    elif TYPE == "MISEQ" and TREE in ("MISEQ2", "HISEQ2"): # MISEQ2 or HISEQ2 recipe (modif Fe)
         print "Using MISEQ2 recipe"
         lane = ["1"]
         iter1 = ['11', '21']
@@ -123,23 +105,21 @@ def main():
     CYCLES = range(1, NUMCYCLES+1)
     for l1 in lane:
         for j in CYCLES:
-            filelist = []
+            filelist, filelist2 = [], []
       #     create set of strips "org"
             srcdir = "L00%s/C%s.1" % (l1, j)
             destdir = "L00%s/C%s.1" % (l1, j)
             if TYPE != "GAII":
                 for i2 in iter2:
-                    filelist = []
+                    filelist, filelist2 = [], []
                     for i1 in iter1:
                         filelist.append(srcdir + "/s_%s_%s%s_crop.gif" % (l1, i1, i2))
+                        filelist2.append(srcdir + "/s_%s_%s%s_crop2.gif" % (l1, i1, i2))
                     tilefileg = destdir + "/org_%02d_%03d.gif" % (int(i2), j)
-                    if not os.path.isfile(tilefileg):
-                        if os.path.isfile(filelist[0]):
-                            execute("convert +append " + " ".join(filelist) + " " + tilefileg)
-                        else:
-                            print "skipping creating", tilefileg, "can't find", filelist[0]
-                    else:
-                        print "skipping creating", tilefileg, "since it already exists"
+                    tilefileg2 = destdir + "/org2_%02d_%03d.gif" % (int(i2), j)
+                    test_func(filelist, tilefileg, "pieces")
+                    test_func(filelist2, tilefileg2, "pieces")
+                    
             else:  # TYPE == "GAII"
                 for (counter, pair) in enumerate(gaiitiles):
                     filelist = []
@@ -159,29 +139,34 @@ def main():
             destdir = "wholeimages"
             if not os.path.isdir(destdir):
                 os.system("mkdir " + destdir)
-            filelist = []
+            filelist, filelist2 = [], []
             for i2 in iter2:
                 tilefileg = srcdir + "/org_%02d_%03d.gif" % (int(i2), j)
-                filelist.append(tilefileg)
+                tilefileg2 = srcdir + "/org2_%02d_%03d.gif" % (int(i2), j)
+                filelist.append(tilefileg) ; filelist2.append(tilefileg2)
 
             tilefileh = destdir + "/orh-%s_%03d.gif" % (l1, j)
-            if os.path.isfile(tilefileh):
-                print "skipping creation of %s since %s already exists" % (tilefileh, tilefileh)
-            elif os.path.isfile(filelist[0]) and not TYPE:
-                execute("convert -append " + " ".join(filelist) + " "+ tilefileh)
-            elif os.path.isfile(filelist[0]) and TYPE:
-                execute("convert -append " + " ".join(filelist) + " "+ tilefileh)
-            else:
-                print "can't find requisite ", filelist[0], "needed to build ", tilefileh
+            tilefileh2 = destdir + "/orh2-%s_%03d.gif" % (l1, j)
+            test_func(filelist, tilefileh, "gather")
+            test_func(filelist2, tilefileh2, "gather")
+            #if os.path.isfile(tilefileh):
+            #    print "skipping creation of %s since %s already exists" % (tilefileh, tilefileh)
+            #elif os.path.isfile(filelist[0]) and not TYPE:
+            #    execute("convert -append " + " ".join(filelist) + " "+ tilefileh)
+            #elif os.path.isfile(filelist[0]) and TYPE:
+            #    execute("convert -append " + " ".join(filelist) + " "+ tilefileh)
+            #else:
+            #    print "can't find requisite ", filelist[0], "needed to build ", tilefileh
 
     #     create whole-cell images cell-
     for j in CYCLES:
-        filelist = []
+        filelist, filelist2 = [], []
         for l1 in lane:
             srcdir = "wholeimages"
             destdir = "wholeimages"
             tilefileh = srcdir + "/orh-%s_%03d.gif" % (l1, j)
-            filelist.append(tilefileh)
+            tilefileh2 = srcdir + "/orh2-%s_%03d.gif" % (l1, j)
+            filelist.append(tilefileh) ; filelist2.append(tilefileh2)
         if not os.path.isdir(destdir):
             os.system("mkdir " + destdir)
         celltarget = destdir + "/cell-%03d.gif" % (j,)
@@ -224,16 +209,17 @@ def main():
         srcdir = "wholeimages"
         destdir = "wholeimages"
         bigtile = destdir + "/tile-lane%s.big.gif" % (l1,)
+        bigtile2 = destdir + "/tile-lane%s.big2.gif" % (l1,)
         smalltile = destdir + "/tile-lane%s.small.gif" % (l1,)
         tinytile = destdir + "/tile-lane%s.tiny.gif" % (l1,)
-        filelist = []
+        filelist, filelist2 = [], []
         for j in CYCLES:
             orhfile = srcdir + "/orh-%s_%03d.gif" % (l1, j)
-            filelist.append(orhfile)
-        if not os.path.isfile(bigtile):
-            execute("convert                  -border 2 " + " ".join(filelist) + " +append " + bigtile)
-        else:
-            print "skipping creating", bigtile, "since it already exists"
+            orhfile2 = srcdir + "/orh2-%s_%03d.gif" % (l1, j)
+            print orhfile2, filelist2
+            filelist.append(orhfile) ; filelist2.append(orhfile2)
+        execute("convert -border 2 " + " ".join(filelist) + " +append " + bigtile)
+        execute("convert -border 2 " + " ".join(filelist2) + " +append " + bigtile2)
         if not os.path.isfile(smalltile):
             execute("convert -resize 25%" + " -border 3 " + " ".join(filelist) + " +append " + smalltile)
         else:
@@ -243,31 +229,33 @@ def main():
         else:
             print "skipping creating", smalltile
 
-    largecellmovie = destdir + "/movie-lg.mp4"
-    smallcellmovie = destdir + "/movie-sm.mp4"
-    insetcellmovie = destdir + "/movie-in.mp4"
-    tinycellmovie = destdir + "/movie-ty.mp4"
 
-    large_quality = " "
-    if TYPE == "NEXTSEQ":
-        large_quality = " -q 1 "
-    if not os.path.isfile(largecellmovie):
-        execute("avconv -r 5 -i " + destdir + "/cell-%03d.gif  " + large_quality + largecellmovie)  # default compression ca. -q 31 ok
-    else:
-        print "skipping creating", largecellmovie
+    # TOUTE CETTE PARTIE BUGGEE
+    # largecellmovie = destdir + "/movie-lg.mp4"
+    # smallcellmovie = destdir + "/movie-sm.mp4"
+    # insetcellmovie = destdir + "/movie-in.mp4"
+    # tinycellmovie = destdir + "/movie-ty.mp4"
 
-    if not os.path.isfile(smallcellmovie):
-        execute("avconv -r 5 -i " + destdir + "/cell-%03d.small.gif -q 1   " + smallcellmovie) # high quality / no compression
-    else:
-        print "skipping creating", smallcellmovie
-    if not os.path.isfile(insetcellmovie):
-        execute("avconv -r 5 -i " + destdir + "/cell-%03d.inset.gif -q 1  " + insetcellmovie)  # high quality / no compression
-    else:
-        print "skipping creating", insetcellmovie
-    if not os.path.isfile(tinycellmovie):
-        execute("avconv -r 5 -i " + destdir + "/cell-%03d.tiny.gif -q 1  " + tinycellmovie)  # high quality / no compression
-    else:
-        print "skipping creating", tinycellmovie
+    # large_quality = " "
+    # if TYPE == "NEXTSEQ":
+        # large_quality = " -q 1 "
+    # if not os.path.isfile(largecellmovie):
+        # execute("avconv -r 5 -i " + destdir + "/cell-%03d.gif  "%j + large_quality + largecellmovie)  # default compression ca. -q 31 ok
+    # else:
+        # print "skipping creating", largecellmovie
+
+    # if not os.path.isfile(smallcellmovie):
+        # execute("avconv -r 5 -i " + destdir + "/cell-%03d.small.gif -q 1   "%j + smallcellmovie) # high quality / no compression
+    # else:
+        # print "skipping creating", smallcellmovie
+    # if not os.path.isfile(insetcellmovie):
+        # execute("avconv -r 5 -i " + destdir + "/cell-%03d.inset.gif -q 1  " + insetcellmovie)  # high quality / no compression
+    # else:
+        # print "skipping creating", insetcellmovie
+    # if not os.path.isfile(tinycellmovie):
+        # execute("avconv -r 5 -i " + destdir + "/cell-%03d.tiny.gif -q 1  " + tinycellmovie)  # high quality / no compression
+    # else:
+        # print "skipping creating", tinycellmovie
 
 main()
 
