@@ -59,7 +59,9 @@ for i in {1..600}
         break 
         fi
     done
-echo Number of cycles: $i
-echo $i > thumbnailpolish.numcycles
+
+nb_cycles=$i ; ((nb_cycles--))
+echo Number of cycles: $nb_cycles
+echo $nb_cycles > thumbnailpolish.numcycles
 
 
