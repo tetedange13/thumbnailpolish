@@ -96,4 +96,4 @@ endif
 	convert $^ -crop $(CROP2DIM) +repage $@
 
 clean:
-	rm */C*/*color.gif */C*/*crop2.gif */C*/*crop.gif
+	rm */C*/*color.gif */C*/*crop2.gif */C*/*crop.gif */C*/*_1.gif */C*/*_2.gif
