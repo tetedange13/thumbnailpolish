@@ -24,7 +24,7 @@ elif [[ "$( identify $f )" =~ .*700x300.* ]] ; then
     echo images in NEXTSEQ format
     echo NEXTSEQ > thumbnailpolish.type 
 else
-    echo "UNKNOWN TYPE (based on dimensions if img)" 
+    echo "UNKNOWN TYPE (based on dimensions of img)" 
 fi
 
 if [[ -e "L001/C1.1/s_1_1112_A.jpg" ]] ; then
@@ -45,6 +45,8 @@ elif [[ -e "L001/C1.1/s_1_1114_a.jpg" ]] ; then
 elif [[ -e "L001/C1.1/s_1_11101_red.jpg" ]] ; then
     echo Tree looks like NEXTSEQ
     echo NEXTSEQ > thumbnailpolish.tree
+else
+    echo "UNKNOWN TREE (based on naming convention of img)" 
 fi
 
 for i in {1..600} ; do
