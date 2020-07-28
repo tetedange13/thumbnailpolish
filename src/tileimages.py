@@ -50,11 +50,15 @@ def test_func(list_of_file, out_file, MODE, curr_cycle=0):
     if os.path.isfile(list_of_file[0]):
         if MODE == "pieces":
             execute("convert +append -border 1 " + " ".join(list_of_file) + " " + out_file)
-        elif MODE == "gather":
+        elif MODE in ("gather1", "gather2"):
             execute("convert -append " + " ".join(list_of_file) + " " + out_file)
-            str_to_exe = ("convert " + out_file + " -pointsize 100 -draw \"text 167,200 'C" + 
+            if MODE == "gather1":
+                str_to_exe = ("convert " + out_file + " -pointsize 120 -draw \"text 25,200 'C" + 
                                                             str(curr_cycle) + "'\" " + out_file)
-            check_output(shlex.split(str_to_exe))
+            elif MODE == "gather2":
+                str_to_exe = ("convert " + out_file + " -pointsize 40 -draw \"text 5,75 'C" + 
+                                                            str(curr_cycle) + "'\" " + out_file)
+            check_output(shlex.split(str_to_exe)) # shlex.split mandatory to have a proper exec
     else:
         print "skipping creating", out_file, "can't find", list_of_file
 
@@ -62,7 +66,6 @@ def test_func(list_of_file, out_file, MODE, curr_cycle=0):
 def main():
 
     TYPE = detecttype(".")
-
     TREE = testhiseq("")
 
     if TYPE == "HISEQ":  # Hiseq with 8 x 6 tiles
@@ -107,7 +110,7 @@ def main():
     NUMCYCLES = howmanycycles("L001")
     print "NUMCYCLES", NUMCYCLES
     CYCLES = range(1, NUMCYCLES+1)
-    #CYCLES = range(16, 19) # To generate pics for only a portion of all cycles
+    #CYCLES = range(150, 200) # To generate pics for only a portion of all cycles
     for l1 in lane:
         for j in CYCLES:
             filelist, filelist2 = [], []
@@ -153,8 +156,8 @@ def main():
 
             tilefileh = destdir + "/orh-%s_%03d.gif" % (l1, j)
             tilefileh2 = destdir + "/orh2-%s_%03d.gif" % (l1, j)
-            test_func(filelist, tilefileh, "gather", j)
-            test_func(filelist2, tilefileh2, "gather", j)
+            test_func(filelist, tilefileh, "gather1", j)
+            test_func(filelist2, tilefileh2, "gather2", j)
             #if os.path.isfile(tilefileh):
             #    print "skipping creation of %s since %s already exists" % (tilefileh, tilefileh)
             #elif os.path.isfile(filelist[0]) and not TYPE:
